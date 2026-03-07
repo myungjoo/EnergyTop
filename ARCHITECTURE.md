@@ -3,6 +3,14 @@
 ## 1. System Overview
 **EnergyTop**은 Linux Kernel sysfs 기반의 전력 데이터를 소프트웨어적으로 폴링하여 기록하고 표출하는 Android On-device 전력 모니터링 시스템이다. 고전류(10A 이상) 모바일 디바이스(예: 갤럭시 S25, S26 등)에서 외부 하드웨어 장비 없이 독립적으로 동작하며, 앱 동작 및 시스템 이벤트와의 교차 분석을 위해 타임스탬프 기반의 정밀한 로깅을 지원한다.
 
+### 1.0. Version Scope & Operating Assumptions (이번 버전 전제)
+본 문서는 **개발용 기기**에서 **시스템 SW 개발자가 shell로 직접 설치/실행**하는 사용 시나리오를 전제로 한다.
+
+* 실행 형태: Android APK 앱이 아닌, shell에서 직접 `energytopd`/`energytop`를 실행하는 CLI 기반 도구
+* 권한 전제: 대상 sysfs 및 데이터 경로 접근에 필요한 권한이 이미 확보되어 있다고 가정
+* 프로세스 생존성: 개발자가 shell에서 daemon을 직접 관리하므로 Android 앱 생명주기 제약은 본 버전 범위에서 제외
+* 호환성 전제: 본 버전은 단일 개발 환경/동일 빌드 체인을 기준으로 사용하며, 장기 ABI/프로토콜 호환성은 우선순위에서 제외
+
 
 
 ### 1.1. Core Components
@@ -98,3 +106,23 @@ Thread 2 (Publisher & Logger): ZMQ 배치 주기에 맞춰 Thread 1의 버퍼와
 Thread 3 (Compressor - Optional but Recommended): 파일 크기가 csv_max_size_mb를 넘을 때, 메인 로깅 스레드 블로킹을 막기 위해 파일명 변경(Rename) 및 압축(zlib 또는 system("gzip ..."))을 비동기로 수행.
 
 ### 5.4. Error Handling: 타겟 sysfs 파일 누락, 권한 부족, ZMQ 바인딩 실패 시 명확한 에러 메시지를 stderr 및 logcat에 남기고 Graceful shutdown 처리할 것.
+
+## 6. Known Issues (Intentionally Deferred in This Version)
+아래 항목은 본 버전에서 **Known Issue로 인지하고 의도적으로 미해결 상태로 유지**한다.
+
+1. **일반 사용자 단말 권한/SELinux 제약 대응 미포함**
+   * 사유: 개발용 기기, shell 직접 실행 전제
+2. **Android 앱 생명주기/백그라운드 제약 대응 미포함**
+   * 사유: daemon을 shell에서 직접 구동/관리
+3. **APK 배포 모델 및 앱 샌드박스 경로 구조 미적용**
+   * 사유: 본 SW는 앱이 아닌 시스템 개발자용 CLI 도구
+4. **ZMQ 전송 포맷의 ABI/버전 호환성 강화(예: 스키마 직렬화) 미적용**
+   * 사유: 현 버전은 동일 환경 내 사용을 전제
+5. **기기별 측정 정확도 편차/캘리브레이션 체계 고도화 미적용**
+   * 사유: 현 단계 우선순위 제외
+6. **Suspend/Sleep 상태 전력 측정 최적화 미적용**
+   * 사유: 해당 상태 전력 소비는 현 버전 관심 범위 외
+7. **버퍼 백프레셔/유실 정책 고도화 미적용**
+   * 사유: 현 단계 우선순위 제외
+
+> 위 항목들은 차기 버전에서 운영 환경/배포 모델 요구사항이 확정되면 우선순위에 따라 순차 반영한다.
