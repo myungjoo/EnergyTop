@@ -1,0 +1,74 @@
+name: PR Binary Artifacts
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+jobs:
+  build-binaries:
+    name: Build binary (${{ matrix.target.display }})
+    runs-on: ${{ matrix.target.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - display: x64
+            archive_arch: x64
+            runner: ubuntu-latest
+          - display: arm64 (armv8)
+            archive_arch: arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libzmq3-dev \
+            cppzmq-dev \
+            libinih-dev \
+            zlib1g-dev
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Package archive
+        id: package
+        shell: bash
+        run: |
+          SHORT_SHA="${GITHUB_SHA::8}"
+          ARCHIVE_NAME="EnergyTop-${{ matrix.target.archive_arch }}-${SHORT_SHA}.tar.gz"
+
+          mkdir -p dist
+          cp build/energytop build/energytopd energytop.ini dist/
+          tar -C dist -czf "${ARCHIVE_NAME}" energytop energytopd energytop.ini
+
+          echo "archive_name=${ARCHIVE_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.archive_name }}
+          path: ${{ steps.package.outputs.archive_name }}
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Add download info to summary
+        run: |
+          echo "### ${{ matrix.target.display }} artifact" >> "$GITHUB_STEP_SUMMARY"
+          echo "- File: \`${{ steps.package.outputs.archive_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Download: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload.outputs.artifact-id }}" >> "$GITHUB_STEP_SUMMARY"
