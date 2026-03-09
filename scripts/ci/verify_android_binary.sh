@@ -33,19 +33,19 @@ case "${ANDROID_ABI}" in
     ;;
 esac
 
-if ! "${READELF}" -h "${BINARY_PATH}" | rg -q "Machine:\\s+${EXPECTED_MACHINE}"; then
+if ! "${READELF}" -h "${BINARY_PATH}" | grep -Eq "Machine:[[:space:]]+${EXPECTED_MACHINE}"; then
   echo "error: ${BINARY_PATH} is not built for ${ANDROID_ABI}" >&2
   "${READELF}" -h "${BINARY_PATH}" >&2
   exit 1
 fi
 
-if ! "${READELF}" -l "${BINARY_PATH}" | rg -q "/system/bin/linker64"; then
+if ! "${READELF}" -l "${BINARY_PATH}" | grep -Eq "/system/bin/linker64"; then
   echo "error: ${BINARY_PATH} does not request Android linker64" >&2
   "${READELF}" -l "${BINARY_PATH}" >&2
   exit 1
 fi
 
-if ! "${READELF}" -h "${BINARY_PATH}" | rg -q "Type:\\s+DYN"; then
+if ! "${READELF}" -h "${BINARY_PATH}" | grep -Eq "Type:[[:space:]]+DYN"; then
   echo "error: ${BINARY_PATH} is not PIE/DYN" >&2
   "${READELF}" -h "${BINARY_PATH}" >&2
   exit 1
