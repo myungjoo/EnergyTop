@@ -127,7 +127,7 @@ avg power(uW): -1821500
 min/max(uW)  : -2411200 / -905000
 energy(uJ)   : -271200
 refresh(ms)  : 200
-keys         : [1-5] window start/stop(toggle), [q] quit
+keys         : [1-5] window start/stop(toggle), [ArrowUp] larger unit, [ArrowDown] smaller unit, [q] quit
 
 Window intervals
 ID  STATE  samples         avg(uW)          energy(uJ)      elapsed
