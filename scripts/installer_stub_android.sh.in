@@ -1,0 +1,78 @@
+#!/system/bin/sh
+set -eu
+
+PAYLOAD_MARKER="__ENERGYTOP_PAYLOAD_BELOW__"
+PREFIX="/data/local/tmp/energytop"
+
+usage() {
+  cat <<'EOF'
+Usage: ./energytop-installer-android-<arch>-<commit>.sh [--prefix PATH]
+
+Options:
+  --prefix PATH  Install root prefix (default: /data/local/tmp/energytop)
+                 Example: --prefix /data/local/tmp/energytop-stage
+  -h, --help     Show this help
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --prefix)
+      if [ "$#" -lt 2 ]; then
+        echo "error: --prefix requires a value" >&2
+        exit 1
+      fi
+      PREFIX="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "error: unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+ROOT_PREFIX="${PREFIX%/}"
+if [ -z "${ROOT_PREFIX}" ]; then
+  ROOT_PREFIX="/data/local/tmp/energytop"
+fi
+
+BIN_DIR="${ROOT_PREFIX}/bin"
+ETC_DIR="${ROOT_PREFIX}/etc"
+
+payload_line="$(awk -v marker="${PAYLOAD_MARKER}" '$0 == marker { print NR + 1; exit }' "$0")"
+if [ -z "${payload_line}" ]; then
+  echo "error: installer payload marker not found" >&2
+  exit 1
+fi
+
+TMP_BASE="${TMPDIR:-/data/local/tmp}"
+mkdir -p "${TMP_BASE}"
+tmp_dir="$(mktemp -d "${TMP_BASE}/energytop-installer.XXXXXX" 2>/dev/null || mktemp -d)"
+cleanup() {
+  rm -rf "${tmp_dir}"
+}
+trap cleanup EXIT INT TERM
+
+tail -n +"${payload_line}" "$0" | tar -xz -C "${tmp_dir}"
+
+mkdir -p "${BIN_DIR}" "${ETC_DIR}"
+cp "${tmp_dir}/energytop" "${BIN_DIR}/energytop"
+cp "${tmp_dir}/energytopd" "${BIN_DIR}/energytopd"
+cp "${tmp_dir}/energytop.ini" "${ETC_DIR}/energytop.ini"
+chmod 0755 "${BIN_DIR}/energytop" "${BIN_DIR}/energytopd"
+chmod 0644 "${ETC_DIR}/energytop.ini"
+
+echo "Installed (Android):"
+echo "  ${BIN_DIR}/energytop"
+echo "  ${BIN_DIR}/energytopd"
+echo "  ${ETC_DIR}/energytop.ini"
+echo "Run with:"
+echo "  ${BIN_DIR}/energytopd --config ${ETC_DIR}/energytop.ini"
+exit 0
+__ENERGYTOP_PAYLOAD_BELOW__

@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  build-and-test:
+  build-and-test-linux:
     name: Build and test (${{ matrix.target.display }})
     runs-on: ${{ matrix.target.runner }}
     strategy:
@@ -47,3 +47,133 @@ jobs:
 
       - name: Test (all)
         run: ctest --test-dir build --output-on-failure --verbose
+
+  build-android:
+    name: Build Android (${{ matrix.target.display }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - display: x64 (emulator)
+            abi: x86_64
+            archive_arch: x64
+          - display: arm64
+            abi: arm64-v8a
+            archive_arch: arm64
+    env:
+      ANDROID_API: "30"
+      ANDROID_NDK_VERSION: "27.1.12297006"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            file
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "ndk;${ANDROID_NDK_VERSION}"
+          echo "ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Cache Android third-party deps
+        uses: actions/cache@v4
+        with:
+          path: .cache/android-deps/${{ matrix.target.abi }}
+          key: android-deps-${{ matrix.target.abi }}-api${{ env.ANDROID_API }}-v1
+
+      - name: Build Android third-party deps
+        run: |
+          scripts/ci/build_android_deps.sh \
+            "${{ matrix.target.abi }}" \
+            "${ANDROID_API}" \
+            ".cache/android-deps/${{ matrix.target.abi }}"
+
+      - name: Configure Android target
+        run: |
+          cmake -S . -B "build-android-${{ matrix.target.archive_arch }}" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI="${{ matrix.target.abi }}" \
+            -DANDROID_PLATFORM="android-${ANDROID_API}" \
+            -DANDROID_STL="c++_static" \
+            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/.cache/android-deps/${{ matrix.target.abi }}" \
+            -DBUILD_TESTING=OFF
+
+      - name: Build Android target
+        run: cmake --build "build-android-${{ matrix.target.archive_arch }}" --parallel
+
+      - name: Verify Android ELF binaries
+        run: |
+          scripts/ci/verify_android_binary.sh \
+            "build-android-${{ matrix.target.archive_arch }}/energytop" \
+            "${{ matrix.target.abi }}" \
+            "${ANDROID_NDK_ROOT}"
+          scripts/ci/verify_android_binary.sh \
+            "build-android-${{ matrix.target.archive_arch }}/energytopd" \
+            "${{ matrix.target.abi }}" \
+            "${ANDROID_NDK_ROOT}"
+
+      - name: Collect Android deliverables
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p "dist/android-${{ matrix.target.archive_arch }}"
+          installer_path="$(ls build-android-${{ matrix.target.archive_arch }}/energytop-installer-android-${{ matrix.target.archive_arch }}-*.sh)"
+
+          cp "build-android-${{ matrix.target.archive_arch }}/energytop" \
+            "dist/android-${{ matrix.target.archive_arch }}/energytop-android-${{ matrix.target.archive_arch }}"
+          cp "build-android-${{ matrix.target.archive_arch }}/energytopd" \
+            "dist/android-${{ matrix.target.archive_arch }}/energytopd-android-${{ matrix.target.archive_arch }}"
+          cp "${installer_path}" \
+            "dist/android-${{ matrix.target.archive_arch }}/energytop-installer-android-${{ matrix.target.archive_arch }}.sh"
+          cp energytop.ini "dist/android-${{ matrix.target.archive_arch }}/energytop.ini"
+
+          tar -C "dist/android-${{ matrix.target.archive_arch }}" \
+            -czf "dist/android-${{ matrix.target.archive_arch }}/energytop-android-${{ matrix.target.archive_arch }}.tar.gz" \
+            "energytop-android-${{ matrix.target.archive_arch }}" \
+            "energytopd-android-${{ matrix.target.archive_arch }}" \
+            "energytop.ini"
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ matrix.target.archive_arch }}-dist
+          path: dist/android-${{ matrix.target.archive_arch }}
+          if-no-files-found: error
+          retention-days: 7
+
+  test-android-x64-emulator:
+    name: Test Android x64 on emulator
+    runs-on: ubuntu-latest
+    needs: build-android
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Android x64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-x64-dist
+          path: android-x64-dist
+
+      - name: Run Android x64 emulator smoke tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          profile: pixel_5
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            bash scripts/ci/android_emulator_smoke_test.sh android-x64-dist
