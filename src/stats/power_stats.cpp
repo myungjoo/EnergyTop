@@ -11,10 +11,21 @@ std::int64_t compute_power_uw(std::int32_t current_ua, std::int32_t voltage_uv) 
 
 void PowerStats::add_sample(const Sample& s) {
   const auto power_uw = compute_power_uw(s.current_ua, s.voltage_uv);
+
+  if (has_prev_sample_ && s.timestamp_real_ms > prev_timestamp_real_ms_) {
+    const auto delta_ms = static_cast<std::int64_t>(s.timestamp_real_ms -
+                                                    prev_timestamp_real_ms_);
+    // Trapezoidal integration: uW * ms / 1000 => uJ
+    total_energy_uj_ += ((prev_power_uw_ + power_uw) * delta_ms) / 2000;
+  }
+
   ++sample_count_;
   sum_power_uw_ += power_uw;
   min_power_uw_ = std::min(min_power_uw_, power_uw);
   max_power_uw_ = std::max(max_power_uw_, power_uw);
+  has_prev_sample_ = true;
+  prev_timestamp_real_ms_ = s.timestamp_real_ms;
+  prev_power_uw_ = power_uw;
 }
 
 StatsSnapshot PowerStats::snapshot() const {
@@ -27,6 +38,7 @@ StatsSnapshot PowerStats::snapshot() const {
   snap.min_power_uw = min_power_uw_;
   snap.max_power_uw = max_power_uw_;
   snap.total_power_uw = sum_power_uw_;
+  snap.total_energy_uj = total_energy_uj_;
   return snap;
 }
 
@@ -35,6 +47,10 @@ void PowerStats::reset() {
   sum_power_uw_ = 0;
   min_power_uw_ = std::numeric_limits<std::int64_t>::max();
   max_power_uw_ = std::numeric_limits<std::int64_t>::min();
+  total_energy_uj_ = 0;
+  has_prev_sample_ = false;
+  prev_timestamp_real_ms_ = 0;
+  prev_power_uw_ = 0;
 }
 
 }  // namespace energytop

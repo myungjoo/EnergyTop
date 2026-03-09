@@ -17,6 +17,7 @@ TEST(PowerStatsTest, ComputesAggregates) {
   EXPECT_EQ(snap.avg_power_uw, 1000000);
   EXPECT_EQ(snap.min_power_uw, -2000000);
   EXPECT_EQ(snap.max_power_uw, 4000000);
+  EXPECT_EQ(snap.total_energy_uj, 500);
 }
 
 TEST(PowerStatsTest, ResetClearsState) {
@@ -29,6 +30,7 @@ TEST(PowerStatsTest, ResetClearsState) {
   EXPECT_EQ(snap.avg_power_uw, 0);
   EXPECT_EQ(snap.min_power_uw, 0);
   EXPECT_EQ(snap.max_power_uw, 0);
+  EXPECT_EQ(snap.total_energy_uj, 0);
 }
 
 TEST(PowerStatsTest, ComputePowerUtility) {

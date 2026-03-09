@@ -18,6 +18,7 @@ struct StatsSnapshot {
   std::int64_t min_power_uw = 0;
   std::int64_t max_power_uw = 0;
   std::int64_t total_power_uw = 0;
+  std::int64_t total_energy_uj = 0;
 };
 
 std::int64_t compute_power_uw(std::int32_t current_ua, std::int32_t voltage_uv);
@@ -33,6 +34,10 @@ class PowerStats {
   std::int64_t sum_power_uw_ = 0;
   std::int64_t min_power_uw_ = std::numeric_limits<std::int64_t>::max();
   std::int64_t max_power_uw_ = std::numeric_limits<std::int64_t>::min();
+  std::int64_t total_energy_uj_ = 0;
+  bool has_prev_sample_ = false;
+  std::uint64_t prev_timestamp_real_ms_ = 0;
+  std::int64_t prev_power_uw_ = 0;
 };
 
 }  // namespace energytop

@@ -77,6 +77,10 @@ cmake --build build -j
 ```
 
 - `--once`: 메시지 1회 수신 후 출력하고 종료
+- 기본 실행 시 키 입력으로 5개 독립 구간(Window 1~5)을 제어
+  - `1`~`5`: 해당 윈도우 start/stop 토글
+  - stop 상태에서 같은 키 재입력 시 reset 후 새 구간 시작
+  - `q`: 모니터 종료
 
 ---
 
@@ -121,6 +125,17 @@ latest current(uA): -482000
 latest voltage(uV): 3875000
 avg power(uW): -1821500
 min/max(uW)  : -2411200 / -905000
+energy(uJ)   : -271200
+refresh(ms)  : 200
+keys         : [1-5] window start/stop(toggle), [q] quit
+
+Window intervals
+ID  STATE  samples         avg(uW)          energy(uJ)      elapsed
+ 1  IDLE         0               0                 0  -
+ 2  RUN        124        -1765000           -983221  2.473s
+ 3  STOP       251        -1698200          -3519821  5.007s
+ 4  IDLE         0               0                 0  -
+ 5  IDLE         0               0                 0  -
 ```
 
 ### 4.2 CSV 로그 출력 예시 (`csv_output_path`)
