@@ -56,7 +56,11 @@ adb shell "chmod 0755 '${REMOTE_BASE}/energytop' '${REMOTE_BASE}/energytopd' '${
 
 adb shell "cd '${REMOTE_BASE}' && ./energytopd --config '${REMOTE_CONFIG}' --duration-sec 4 > daemon.log 2>&1 &"
 sleep 2
-adb shell "cd '${REMOTE_BASE}' && ./energytop --config '${REMOTE_CONFIG}' --once > monitor.out 2>&1"
+if ! timeout 60s adb shell "cd '${REMOTE_BASE}' && ./energytop --config '${REMOTE_CONFIG}' --once > monitor.out 2>&1"; then
+  echo "error: timed out waiting for first monitor output" >&2
+  adb shell "cd '${REMOTE_BASE}' && echo '--- daemon.log ---' && sed -n '1,200p' daemon.log && echo '--- monitor.out ---' && sed -n '1,200p' monitor.out" || true
+  exit 1
+fi
 sleep 3
 
 adb shell "test -s '${REMOTE_LOG}'"
@@ -70,7 +74,11 @@ adb shell "test -f '${REMOTE_INSTALL_PREFIX}/etc/energytop.ini'"
 
 adb shell "'${REMOTE_INSTALL_PREFIX}/bin/energytopd' --config '${REMOTE_CONFIG}' --duration-sec 3 > '${REMOTE_BASE}/daemon-installed.log' 2>&1 &"
 sleep 2
-adb shell "'${REMOTE_INSTALL_PREFIX}/bin/energytop' --config '${REMOTE_CONFIG}' --once > '${REMOTE_BASE}/monitor-installed.out' 2>&1"
+if ! timeout 60s adb shell "'${REMOTE_INSTALL_PREFIX}/bin/energytop' --config '${REMOTE_CONFIG}' --once > '${REMOTE_BASE}/monitor-installed.out' 2>&1"; then
+  echo "error: timed out waiting for installed monitor output" >&2
+  adb shell "cd '${REMOTE_BASE}' && echo '--- daemon-installed.log ---' && sed -n '1,200p' daemon-installed.log && echo '--- monitor-installed.out ---' && sed -n '1,200p' monitor-installed.out" || true
+  exit 1
+fi
 
 adb shell "cd '${REMOTE_BASE}' && grep -q 'EnergyTop Monitor' monitor-installed.out"
 adb shell "test -s '${REMOTE_LOG}'"
