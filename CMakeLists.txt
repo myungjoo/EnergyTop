@@ -100,7 +100,7 @@ add_custom_command(
           "tar -C \"${ENERGYTOP_INSTALLER_PAYLOAD_DIR}\" -czf \"${ENERGYTOP_INSTALLER_PAYLOAD_ARCHIVE}\" energytop energytopd energytop.ini"
   COMMAND /bin/bash -c
           "cat \"${ENERGYTOP_INSTALLER_STUB}\" \"${ENERGYTOP_INSTALLER_PAYLOAD_ARCHIVE}\" > \"${ENERGYTOP_INSTALLER_OUTPUT}\""
-  COMMAND "${CMAKE_COMMAND}" -E chmod +x "${ENERGYTOP_INSTALLER_OUTPUT}"
+  COMMAND /bin/chmod +x "${ENERGYTOP_INSTALLER_OUTPUT}"
   DEPENDS
     energytop
     energytopd
