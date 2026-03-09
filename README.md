@@ -39,6 +39,25 @@ cmake --build build -j
 
 - `build/energytopd`
 - `build/energytop`
+- `build/energytop-installer-<arch>-<commit>.sh` (설치용 self-extracting 스크립트)
+
+설치 스크립트 실행(타깃 디바이스):
+
+```bash
+sudo ./energytop-installer-x64-<commit>.sh
+```
+
+설치 위치:
+
+- `/usr/bin/energytop`
+- `/usr/bin/energytopd`
+- `/etc/energytop.ini`
+
+테스트/스테이징 설치:
+
+```bash
+./energytop-installer-x64-<commit>.sh --prefix /tmp/energytop-stage
+```
 
 ### 2.2 설정 파일
 

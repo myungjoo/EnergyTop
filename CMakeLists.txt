@@ -6,6 +6,26 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+execute_process(
+  COMMAND git rev-parse --short=8 HEAD
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  OUTPUT_VARIABLE ENERGYTOP_GIT_COMMIT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  ERROR_QUIET
+)
+if(NOT ENERGYTOP_GIT_COMMIT)
+  set(ENERGYTOP_GIT_COMMIT unknown)
+endif()
+
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" ENERGYTOP_ARCH_RAW)
+if(ENERGYTOP_ARCH_RAW MATCHES "^(x86_64|amd64)$")
+  set(ENERGYTOP_ARCH x64)
+elseif(ENERGYTOP_ARCH_RAW MATCHES "^(aarch64|arm64)$")
+  set(ENERGYTOP_ARCH arm64)
+else()
+  set(ENERGYTOP_ARCH "${ENERGYTOP_ARCH_RAW}")
+endif()
+
 include(CTest)
 
 find_package(PkgConfig REQUIRED)
@@ -44,6 +64,52 @@ target_link_libraries(energytopd PRIVATE energytop_core)
 
 add_executable(energytop src/cli/energytop_main.cpp)
 target_link_libraries(energytop PRIVATE energytop_core)
+
+set(ENERGYTOP_INSTALLER_NAME
+    "energytop-installer-${ENERGYTOP_ARCH}-${ENERGYTOP_GIT_COMMIT}.sh"
+)
+set(ENERGYTOP_INSTALLER_STUB_IN
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/installer_stub.sh.in"
+)
+set(ENERGYTOP_INSTALLER_STUB
+    "${CMAKE_CURRENT_BINARY_DIR}/energytop-installer.stub.sh"
+)
+set(ENERGYTOP_INSTALLER_PAYLOAD_DIR
+    "${CMAKE_CURRENT_BINARY_DIR}/installer_payload"
+)
+set(ENERGYTOP_INSTALLER_PAYLOAD_ARCHIVE
+    "${CMAKE_CURRENT_BINARY_DIR}/energytop-installer.payload.tar.gz"
+)
+set(ENERGYTOP_INSTALLER_OUTPUT
+    "${CMAKE_CURRENT_BINARY_DIR}/${ENERGYTOP_INSTALLER_NAME}"
+)
+
+configure_file("${ENERGYTOP_INSTALLER_STUB_IN}" "${ENERGYTOP_INSTALLER_STUB}" @ONLY)
+
+add_custom_command(
+  OUTPUT "${ENERGYTOP_INSTALLER_OUTPUT}"
+  COMMAND "${CMAKE_COMMAND}" -E rm -rf "${ENERGYTOP_INSTALLER_PAYLOAD_DIR}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${ENERGYTOP_INSTALLER_PAYLOAD_DIR}"
+  COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:energytop>"
+          "${ENERGYTOP_INSTALLER_PAYLOAD_DIR}/energytop"
+  COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:energytopd>"
+          "${ENERGYTOP_INSTALLER_PAYLOAD_DIR}/energytopd"
+  COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_SOURCE_DIR}/energytop.ini"
+          "${ENERGYTOP_INSTALLER_PAYLOAD_DIR}/energytop.ini"
+  COMMAND /bin/bash -c
+          "tar -C \"${ENERGYTOP_INSTALLER_PAYLOAD_DIR}\" -czf \"${ENERGYTOP_INSTALLER_PAYLOAD_ARCHIVE}\" energytop energytopd energytop.ini"
+  COMMAND /bin/bash -c
+          "cat \"${ENERGYTOP_INSTALLER_STUB}\" \"${ENERGYTOP_INSTALLER_PAYLOAD_ARCHIVE}\" > \"${ENERGYTOP_INSTALLER_OUTPUT}\""
+  COMMAND "${CMAKE_COMMAND}" -E chmod +x "${ENERGYTOP_INSTALLER_OUTPUT}"
+  DEPENDS
+    energytop
+    energytopd
+    "${CMAKE_CURRENT_SOURCE_DIR}/energytop.ini"
+    "${ENERGYTOP_INSTALLER_STUB}"
+  VERBATIM
+)
+
+add_custom_target(energytop_installer ALL DEPENDS "${ENERGYTOP_INSTALLER_OUTPUT}")
 
 if(BUILD_TESTING)
   find_package(GTest REQUIRED)
