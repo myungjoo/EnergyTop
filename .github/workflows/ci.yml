@@ -42,5 +42,8 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
-      - name: Test
+      - name: Test (PowerStats regression first)
+        run: ctest --test-dir build --output-on-failure --verbose -R unit_power_stats
+
+      - name: Test (all)
         run: ctest --test-dir build --output-on-failure --verbose
