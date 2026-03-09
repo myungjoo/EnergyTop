@@ -23,7 +23,7 @@ REMOTE_BASE="/data/local/tmp/energytop-ci"
 REMOTE_SYSFS="${REMOTE_BASE}/mock_sysfs"
 REMOTE_CONFIG="${REMOTE_BASE}/energytop-android.ini"
 REMOTE_LOG="${REMOTE_BASE}/energytop_log.csv"
-REMOTE_IPC="${REMOTE_BASE}/energytop.ipc"
+REMOTE_TCP_PORT="35555"
 REMOTE_INSTALL_PREFIX="/data/local/tmp/energytop-installed"
 
 adb wait-for-device
@@ -36,7 +36,7 @@ cat > /tmp/energytop-android-test.ini <<EOF
 [Daemon]
 daemon_polling_interval_ms = 50
 zmq_publish_interval_sec = 1
-zmq_endpoint = ipc://${REMOTE_IPC}
+zmq_endpoint = tcp://127.0.0.1:${REMOTE_TCP_PORT}
 
 [Hardware]
 sysfs_path_override = ${REMOTE_SYSFS}
