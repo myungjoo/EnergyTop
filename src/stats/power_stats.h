@@ -10,6 +10,7 @@ struct Sample {
   std::uint64_t timestamp_real_ms = 0;
   std::int32_t current_ua = 0;
   std::int32_t voltage_uv = 0;
+  std::uint64_t timestamp_boot_ns = 0;
 };
 
 struct StatsSnapshot {
@@ -34,9 +35,10 @@ class PowerStats {
   std::int64_t sum_power_uw_ = 0;
   std::int64_t min_power_uw_ = std::numeric_limits<std::int64_t>::max();
   std::int64_t max_power_uw_ = std::numeric_limits<std::int64_t>::min();
-  std::int64_t total_energy_uj_ = 0;
+  __int128 total_energy_numer_uwns_ = 0;
   bool has_prev_sample_ = false;
   std::uint64_t prev_timestamp_real_ms_ = 0;
+  std::uint64_t prev_timestamp_boot_ns_ = 0;
   std::int64_t prev_power_uw_ = 0;
 };
 
