@@ -28,11 +28,19 @@ endif()
 
 include(CTest)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBZMQ REQUIRED IMPORTED_TARGET libzmq)
-find_path(CPPZMQ_INCLUDE_DIR zmq.hpp REQUIRED)
-find_path(INIH_INCLUDE_DIR ini.h REQUIRED)
-find_library(INIH_LIBRARY NAMES inih REQUIRED)
+if(ANDROID)
+  find_path(CPPZMQ_INCLUDE_DIR zmq.hpp REQUIRED)
+  find_path(LIBZMQ_INCLUDE_DIR zmq.h REQUIRED)
+  find_library(LIBZMQ_LIBRARY NAMES zmq libzmq REQUIRED)
+  find_path(INIH_INCLUDE_DIR ini.h REQUIRED)
+  find_library(INIH_LIBRARY NAMES inih REQUIRED)
+else()
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(LIBZMQ REQUIRED IMPORTED_TARGET libzmq)
+  find_path(CPPZMQ_INCLUDE_DIR zmq.hpp REQUIRED)
+  find_path(INIH_INCLUDE_DIR ini.h REQUIRED)
+  find_library(INIH_LIBRARY NAMES inih REQUIRED)
+endif()
 
 add_library(
   energytop_core
@@ -49,14 +57,17 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CPPZMQ_INCLUDE_DIR}
+    $<$<BOOL:${ANDROID}>:${LIBZMQ_INCLUDE_DIR}>
     ${INIH_INCLUDE_DIR}
 )
 
 target_link_libraries(
   energytop_core
   PUBLIC
-    PkgConfig::LIBZMQ
+    $<$<BOOL:${ANDROID}>:${LIBZMQ_LIBRARY}>
+    $<$<NOT:$<BOOL:${ANDROID}>>:PkgConfig::LIBZMQ>
     ${INIH_LIBRARY}
+    $<$<BOOL:${ANDROID}>:log>
 )
 
 add_executable(energytopd src/daemon/energytopd_main.cpp)
@@ -65,12 +76,21 @@ target_link_libraries(energytopd PRIVATE energytop_core)
 add_executable(energytop src/cli/energytop_main.cpp)
 target_link_libraries(energytop PRIVATE energytop_core)
 
-set(ENERGYTOP_INSTALLER_NAME
-    "energytop-installer-${ENERGYTOP_ARCH}-${ENERGYTOP_GIT_COMMIT}.sh"
-)
-set(ENERGYTOP_INSTALLER_STUB_IN
-    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/installer_stub.sh.in"
-)
+if(ANDROID)
+  set(ENERGYTOP_INSTALLER_NAME
+      "energytop-installer-android-${ENERGYTOP_ARCH}-${ENERGYTOP_GIT_COMMIT}.sh"
+  )
+  set(ENERGYTOP_INSTALLER_STUB_IN
+      "${CMAKE_CURRENT_SOURCE_DIR}/scripts/installer_stub_android.sh.in"
+  )
+else()
+  set(ENERGYTOP_INSTALLER_NAME
+      "energytop-installer-${ENERGYTOP_ARCH}-${ENERGYTOP_GIT_COMMIT}.sh"
+  )
+  set(ENERGYTOP_INSTALLER_STUB_IN
+      "${CMAKE_CURRENT_SOURCE_DIR}/scripts/installer_stub.sh.in"
+  )
+endif()
 set(ENERGYTOP_INSTALLER_STUB
     "${CMAKE_CURRENT_BINARY_DIR}/energytop-installer.stub.sh"
 )
