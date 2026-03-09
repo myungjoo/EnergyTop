@@ -29,11 +29,41 @@ endif()
 include(CTest)
 
 if(ANDROID)
-  find_path(CPPZMQ_INCLUDE_DIR zmq.hpp REQUIRED)
-  find_path(LIBZMQ_INCLUDE_DIR zmq.h REQUIRED)
-  find_library(LIBZMQ_LIBRARY NAMES zmq libzmq REQUIRED)
-  find_path(INIH_INCLUDE_DIR ini.h REQUIRED)
-  find_library(INIH_LIBRARY NAMES inih REQUIRED)
+  find_path(
+    CPPZMQ_INCLUDE_DIR
+    zmq.hpp
+    REQUIRED
+    HINTS ${CMAKE_PREFIX_PATH}
+    PATH_SUFFIXES include
+  )
+  find_path(
+    LIBZMQ_INCLUDE_DIR
+    zmq.h
+    REQUIRED
+    HINTS ${CMAKE_PREFIX_PATH}
+    PATH_SUFFIXES include
+  )
+  find_library(
+    LIBZMQ_LIBRARY
+    NAMES zmq libzmq
+    REQUIRED
+    HINTS ${CMAKE_PREFIX_PATH}
+    PATH_SUFFIXES lib
+  )
+  find_path(
+    INIH_INCLUDE_DIR
+    ini.h
+    REQUIRED
+    HINTS ${CMAKE_PREFIX_PATH}
+    PATH_SUFFIXES include
+  )
+  find_library(
+    INIH_LIBRARY
+    NAMES inih
+    REQUIRED
+    HINTS ${CMAKE_PREFIX_PATH}
+    PATH_SUFFIXES lib
+  )
 else()
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(LIBZMQ REQUIRED IMPORTED_TARGET libzmq)
