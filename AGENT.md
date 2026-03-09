@@ -44,3 +44,28 @@
 ## 7) 테스트 최소선
 - 통계 계산(`PowerStats`)은 단위 테스트를 우선 작성한다.
 - 수집기 테스트는 sysfs mock 파일로 수행한다.
+
+## 8) Cloud Agent 환경 준비 (필수)
+- 이 저장소는 CMake + C++17 + ZeroMQ + inih 기반이다. 새 cloud agent 환경에서는 아래 패키지를 먼저 설치한다.
+  - `libstdc++-14-dev`
+  - `libzmq3-dev`
+  - `cppzmq-dev`
+  - `libinih-dev`
+  - `libgtest-dev`
+  - `ninja-build`
+  - `pkg-config`
+  - `cmake`
+- 참고: 일부 Ubuntu 이미지에서 `/usr/bin/c++`가 `clang 18`을 가리키며 GCC 14 경로를 선택한다. 이때 `libstdc++-14-dev`가 없으면 링크 시 `cannot find -lstdc++`가 발생한다.
+
+권장 초기 검증 순서:
+
+```bash
+printf 'int main(){return 0;}\n' > /tmp/cxx_link_test.cpp
+c++ /tmp/cxx_link_test.cpp -o /tmp/cxx_link_test
+/tmp/cxx_link_test
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
+- 빌드 성공 시 installer 산출물(`build/energytop-installer-<arch>-<commit>.sh`)까지 생성되어야 한다.
