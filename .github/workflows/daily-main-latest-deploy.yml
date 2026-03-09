@@ -7,9 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: daily-main-latest-deploy
@@ -71,6 +69,8 @@ jobs:
           cp build/energytop "publish/latest/${{ matrix.target.arch }}/energytop"
           cp build/energytopd "publish/latest/${{ matrix.target.arch }}/energytopd"
           cp energytop.ini "publish/latest/${{ matrix.target.arch }}/energytop.ini"
+          cp build/energytop "publish/latest/energytop-${{ matrix.target.arch }}"
+          cp build/energytopd "publish/latest/energytopd-${{ matrix.target.arch }}"
 
           cp "${installer_path}" "publish/latest/${{ matrix.target.arch }}/energytop-installer.sh"
           cp "${installer_path}" "publish/latest/energytop-installer-${{ matrix.target.arch }}.sh"
@@ -88,12 +88,9 @@ jobs:
           retention-days: 1
 
   deploy-latest:
-    name: Deploy latest files
+    name: Publish latest files
     runs-on: ubuntu-latest
     needs: build-test-package
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Checkout main HEAD
@@ -106,10 +103,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: latest-*
-          path: site/latest
+          path: dist/latest
           merge-multiple: true
 
-      - name: Build site content
+      - name: Build metadata
         shell: bash
         run: |
           set -euo pipefail
@@ -118,7 +115,7 @@ jobs:
           MAIN_SHORT_SHA="$(git rev-parse --short=8 HEAD)"
           BUILD_TIME_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-          cat > site/latest/metadata.json <<EOF
+          cat > dist/latest/metadata.json <<EOF
           {
             "repository": "${GITHUB_REPOSITORY}",
             "source_branch": "main",
@@ -132,60 +129,50 @@ jobs:
           EOF
 
           (
-            cd site/latest
+            cd dist/latest
             sha256sum \
               energytop-x64.tar.gz \
               energytop-arm64.tar.gz \
               energytop-installer-x64.sh \
               energytop-installer-arm64.sh \
-              x64/energytop \
-              x64/energytopd \
-              arm64/energytop \
-              arm64/energytopd \
+              energytop-x64 \
+              energytopd-x64 \
+              energytop-arm64 \
+              energytopd-arm64 \
               > SHA256SUMS
           )
 
-          cat > site/index.html <<EOF
-          <!doctype html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
-            <title>EnergyTop latest build</title>
-          </head>
-          <body>
-            <h1>EnergyTop latest build</h1>
-            <p>Source: <code>main@${MAIN_SHORT_SHA}</code></p>
-            <ul>
-              <li><a href="./latest/energytop-installer-x64.sh">Installer (x64)</a></li>
-              <li><a href="./latest/energytop-installer-arm64.sh">Installer (arm64)</a></li>
-              <li><a href="./latest/energytop-x64.tar.gz">Binary archive (x64)</a></li>
-              <li><a href="./latest/energytop-arm64.tar.gz">Binary archive (arm64)</a></li>
-              <li><a href="./latest/x64/energytop">energytop binary (x64)</a></li>
-              <li><a href="./latest/x64/energytopd">energytopd binary (x64)</a></li>
-              <li><a href="./latest/arm64/energytop">energytop binary (arm64)</a></li>
-              <li><a href="./latest/arm64/energytopd">energytopd binary (arm64)</a></li>
-              <li><a href="./latest/SHA256SUMS">SHA256SUMS</a></li>
-              <li><a href="./latest/metadata.json">metadata.json</a></li>
-            </ul>
-          </body>
-          </html>
+          cat > dist/latest/release-notes.md <<EOF
+          Automated latest build from main.
+
+          - Source commit: \`${MAIN_SHA}\`
+          - Build time (UTC): \`${BUILD_TIME_UTC}\`
+          - Trigger: \`${GITHUB_EVENT_NAME}\`
+          - Workflow run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
           EOF
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Create or update latest release
+        uses: softprops/action-gh-release@v2
         with:
-          path: site
-
-      - name: Deploy Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          tag_name: latest-build
+          name: EnergyTop latest build
+          body_path: dist/latest/release-notes.md
+          files: |
+            dist/latest/energytop-installer-x64.sh
+            dist/latest/energytop-installer-arm64.sh
+            dist/latest/energytop-x64.tar.gz
+            dist/latest/energytop-arm64.tar.gz
+            dist/latest/energytop-x64
+            dist/latest/energytopd-x64
+            dist/latest/energytop-arm64
+            dist/latest/energytopd-arm64
+            dist/latest/metadata.json
+            dist/latest/SHA256SUMS
+          fail_on_unmatched_files: true
+          overwrite_files: true
 
       - name: Add summary
         run: |
-          echo "## Latest deploy completed" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Latest release published" >> "$GITHUB_STEP_SUMMARY"
           echo "- Source: main@$(git rev-parse --short=8 HEAD)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Page URL: ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Release: https://github.com/${GITHUB_REPOSITORY}/releases/tag/latest-build" >> "$GITHUB_STEP_SUMMARY"
