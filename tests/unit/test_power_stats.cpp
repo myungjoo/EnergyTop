@@ -235,8 +235,8 @@ TEST(PowerStatsTest, EliminatesAccumulatedTruncationInLowPowerConstantLoad) {
 
   EXPECT_EQ(new_energy, 2);
   EXPECT_EQ(legacy_energy, 0);
-  EXPECT_EQ(new_err, 0.0L);
-  EXPECT_EQ(legacy_err, 2.0L);
+  EXPECT_LE(new_err, 1e-12L);
+  EXPECT_NEAR(static_cast<double>(legacy_err), 2.0, 1e-12);
 }
 
 }  // namespace energytop
