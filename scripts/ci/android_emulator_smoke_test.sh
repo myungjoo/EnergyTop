@@ -36,6 +36,7 @@ REMOTE_CONFIG="${REMOTE_BASE}/energytop-android.ini"
 REMOTE_LOG="${REMOTE_BASE}/energytop_log.csv"
 REMOTE_TCP_PORT="35555"
 REMOTE_INSTALL_PREFIX="/data/local/tmp/energytop-installed"
+DAEMON_DURATION_SEC="20"
 
 log_step "Step 2/9: wait for emulator and prepare remote directories"
 adb wait-for-device
@@ -69,12 +70,13 @@ adb push /tmp/energytop-android-test.ini "${REMOTE_CONFIG}" >/dev/null
 adb shell "chmod 0755 '${REMOTE_BASE}/energytop' '${REMOTE_BASE}/energytopd' '${REMOTE_BASE}/energytop-installer-android-x64.sh'"
 
 log_step "Step 5/9: run direct binaries smoke test"
-adb shell "cd '${REMOTE_BASE}' && ./energytopd --config '${REMOTE_CONFIG}' --duration-sec 4 > daemon.log 2>&1 &"
+adb shell "cd '${REMOTE_BASE}' && nohup ./energytopd --config '${REMOTE_CONFIG}' --duration-sec ${DAEMON_DURATION_SEC} > daemon.log 2>&1 < /dev/null & echo \$! > daemon.pid"
 sleep 2
+adb shell "cd '${REMOTE_BASE}' && test -s daemon.pid && kill -0 \$(cat daemon.pid)"
 log_step "Step 5/9: waiting for first monitor output (timeout 60s)"
 if ! timeout 60s adb shell "cd '${REMOTE_BASE}' && ./energytop --config '${REMOTE_CONFIG}' --once > monitor.out 2>&1"; then
   echo "error: timed out waiting for first monitor output" >&2
-  adb shell "cd '${REMOTE_BASE}' && echo '--- daemon.log ---' && sed -n '1,200p' daemon.log && echo '--- monitor.out ---' && sed -n '1,200p' monitor.out" || true
+  adb shell "cd '${REMOTE_BASE}' && echo '--- daemon.log ---' && sed -n '1,200p' daemon.log && echo '--- monitor.out ---' && sed -n '1,200p' monitor.out && echo '--- process-list ---' && ps -A | grep energytop || true" || true
   exit 1
 fi
 sleep 3
@@ -91,12 +93,13 @@ adb shell "test -x '${REMOTE_INSTALL_PREFIX}/bin/energytopd'"
 adb shell "test -f '${REMOTE_INSTALL_PREFIX}/etc/energytop.ini'"
 
 log_step "Step 8/9: run installed binaries smoke test"
-adb shell "'${REMOTE_INSTALL_PREFIX}/bin/energytopd' --config '${REMOTE_CONFIG}' --duration-sec 3 > '${REMOTE_BASE}/daemon-installed.log' 2>&1 &"
+adb shell "cd '${REMOTE_BASE}' && nohup '${REMOTE_INSTALL_PREFIX}/bin/energytopd' --config '${REMOTE_CONFIG}' --duration-sec ${DAEMON_DURATION_SEC} > daemon-installed.log 2>&1 < /dev/null & echo \$! > daemon-installed.pid"
 sleep 2
+adb shell "cd '${REMOTE_BASE}' && test -s daemon-installed.pid && kill -0 \$(cat daemon-installed.pid)"
 log_step "Step 8/9: waiting for installed monitor output (timeout 60s)"
 if ! timeout 60s adb shell "'${REMOTE_INSTALL_PREFIX}/bin/energytop' --config '${REMOTE_CONFIG}' --once > '${REMOTE_BASE}/monitor-installed.out' 2>&1"; then
   echo "error: timed out waiting for installed monitor output" >&2
-  adb shell "cd '${REMOTE_BASE}' && echo '--- daemon-installed.log ---' && sed -n '1,200p' daemon-installed.log && echo '--- monitor-installed.out ---' && sed -n '1,200p' monitor-installed.out" || true
+  adb shell "cd '${REMOTE_BASE}' && echo '--- daemon-installed.log ---' && sed -n '1,200p' daemon-installed.log && echo '--- monitor-installed.out ---' && sed -n '1,200p' monitor-installed.out && echo '--- process-list ---' && ps -A | grep energytop || true" || true
   exit 1
 fi
 
