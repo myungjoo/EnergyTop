@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PAYLOAD_MARKER="__ENERGYTOP_PAYLOAD_BELOW__"
+PREFIX="/"
+
+usage() {
+  cat <<'EOF'
+Usage: ./energytop-installer-<arch>-<commit>.sh [--prefix PATH]
+
+Options:
+  --prefix PATH  Install root prefix (default: /)
+                 Example: --prefix /tmp/stage
+  -h, --help     Show this help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --prefix)
+      if [[ $# -lt 2 ]]; then
+        echo "error: --prefix requires a value" >&2
+        exit 1
+      fi
+      PREFIX="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "error: unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [[ "${PREFIX}" == "/" && "${EUID}" -ne 0 ]]; then
+  echo "error: root privileges are required for prefix '/'" >&2
+  echo "hint: run with sudo, or use --prefix for staging install" >&2
+  exit 1
+fi
+
+ROOT_PREFIX="${PREFIX%/}"
+if [[ -z "${ROOT_PREFIX}" ]]; then
+  ROOT_PREFIX="/"
+fi
+
+BIN_DIR="${ROOT_PREFIX}/usr/bin"
+ETC_DIR="${ROOT_PREFIX}/etc"
+
+payload_line="$(awk -v marker="${PAYLOAD_MARKER}" '$0 == marker { print NR + 1; exit }' "$0")"
+if [[ -z "${payload_line}" ]]; then
+  echo "error: installer payload marker not found" >&2
+  exit 1
+fi
+
+tmp_dir="$(mktemp -d)"
+cleanup() {
+  rm -rf "${tmp_dir}"
+}
+trap cleanup EXIT
+
+tail -n +"${payload_line}" "$0" | tar -xz -C "${tmp_dir}"
+
+install -d "${BIN_DIR}" "${ETC_DIR}"
+install -m 0755 "${tmp_dir}/energytop" "${BIN_DIR}/energytop"
+install -m 0755 "${tmp_dir}/energytopd" "${BIN_DIR}/energytopd"
+install -m 0644 "${tmp_dir}/energytop.ini" "${ETC_DIR}/energytop.ini"
+
+echo "Installed:"
+echo "  ${BIN_DIR}/energytop"
+echo "  ${BIN_DIR}/energytopd"
+echo "  ${ETC_DIR}/energytop.ini"
+exit 0
+__ENERGYTOP_PAYLOAD_BELOW__
