@@ -52,11 +52,28 @@ if(BUILD_TESTING)
   target_link_libraries(test_power_stats PRIVATE energytop_core GTest::gtest_main)
   add_test(NAME unit_power_stats COMMAND test_power_stats)
 
+  add_executable(test_config tests/unit/test_config.cpp)
+  target_link_libraries(test_config PRIVATE energytop_core GTest::gtest_main)
+  add_test(NAME unit_config COMMAND test_config)
+
   add_executable(
-    test_mock_sysfs
+    test_collector_registry
+    tests/unit/test_collector_registry.cpp
+  )
+  target_link_libraries(test_collector_registry PRIVATE energytop_core GTest::gtest_main)
+  add_test(NAME unit_collector_registry COMMAND test_collector_registry)
+
+  add_executable(
+    test_battery_collector_mock_sysfs
     tests/system/test_battery_collector_mock_sysfs.cpp
+  )
+  target_link_libraries(test_battery_collector_mock_sysfs PRIVATE energytop_core GTest::gtest_main)
+  add_test(NAME system_battery_collector_mock_sysfs COMMAND test_battery_collector_mock_sysfs)
+
+  add_executable(
+    test_daemon_mock_sysfs
     tests/system/test_daemon_mock_sysfs.cpp
   )
-  target_link_libraries(test_mock_sysfs PRIVATE energytop_core GTest::gtest_main)
-  add_test(NAME system_mock_sysfs COMMAND test_mock_sysfs)
+  target_link_libraries(test_daemon_mock_sysfs PRIVATE energytop_core GTest::gtest_main)
+  add_test(NAME system_daemon_mock_sysfs COMMAND test_daemon_mock_sysfs)
 endif()
