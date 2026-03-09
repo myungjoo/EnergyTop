@@ -99,7 +99,7 @@ curl -fsSL "https://raw.githubusercontent.com/benhoyt/inih/${INIH_VERSION}/ini.c
   -o "${WORK_DIR}/ini.c"
 curl -fsSL "https://raw.githubusercontent.com/benhoyt/inih/${INIH_VERSION}/ini.h" \
   -o "${INSTALL_PREFIX}/include/ini.h"
-"${CC}" -O2 -fPIC -c "${WORK_DIR}/ini.c" -o "${WORK_DIR}/ini.o"
+"${CC}" -O2 -fPIC -I"${INSTALL_PREFIX}/include" -c "${WORK_DIR}/ini.c" -o "${WORK_DIR}/ini.o"
 "${AR}" rcs "${INSTALL_PREFIX}/lib/libinih.a" "${WORK_DIR}/ini.o"
 
 echo "${EXPECTED_STAMP}" > "${VERSION_STAMP}"
