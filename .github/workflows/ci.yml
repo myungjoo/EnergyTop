@@ -100,13 +100,19 @@ jobs:
 
       - name: Configure Android target
         run: |
+          ANDROID_DEPS_PREFIX="${GITHUB_WORKSPACE}/.cache/android-deps/${{ matrix.target.abi }}"
           cmake -S . -B "build-android-${{ matrix.target.archive_arch }}" -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_TOOLCHAIN_FILE="${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake" \
             -DANDROID_ABI="${{ matrix.target.abi }}" \
             -DANDROID_PLATFORM="android-${ANDROID_API}" \
             -DANDROID_STL="c++_static" \
-            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/.cache/android-deps/${{ matrix.target.abi }}" \
+            -DCMAKE_PREFIX_PATH="${ANDROID_DEPS_PREFIX}" \
+            -DCPPZMQ_INCLUDE_DIR="${ANDROID_DEPS_PREFIX}/include" \
+            -DLIBZMQ_INCLUDE_DIR="${ANDROID_DEPS_PREFIX}/include" \
+            -DLIBZMQ_LIBRARY="${ANDROID_DEPS_PREFIX}/lib/libzmq.a" \
+            -DINIH_INCLUDE_DIR="${ANDROID_DEPS_PREFIX}/include" \
+            -DINIH_LIBRARY="${ANDROID_DEPS_PREFIX}/lib/libinih.a" \
             -DBUILD_TESTING=OFF
 
       - name: Build Android target
