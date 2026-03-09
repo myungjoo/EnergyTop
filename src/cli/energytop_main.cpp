@@ -383,7 +383,7 @@ int main(int argc, char** argv) {
         for (const auto& r : records) {
           latest = r;
           const energytop::Sample sample {r.timestamp_real_ms, r.current_ua,
-                                          r.voltage_uv};
+                                          r.voltage_uv, r.timestamp_boot_ns};
           stats.add_sample(sample);
           for (auto& window : windows) {
             if (window.running) {
