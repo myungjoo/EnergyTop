@@ -112,7 +112,61 @@ Android 설치(기본 prefix: `/data/local/tmp/energytop`):
 sh ./energytop-installer-android-arm64-<commit>.sh
 ```
 
-### 2.3 설정 파일
+> 일부 Android 단말/셸 환경(특히 Termux)에서는 `/data/local/tmp`가 없거나 쓰기 권한이 없을 수 있습니다.  
+> 이 경우 반드시 `--prefix`로 사용자 쓰기 가능한 경로를 지정하세요.
+
+### 2.3 Android non-root (Termux) 설치/실행 가이드
+
+아래 예시는 **Termux 일반 사용자(non-root)** 기준입니다.
+
+1) 설치 경로를 홈 디렉터리 하위로 지정
+
+```bash
+PREFIX="$HOME/.local/energytop"
+sh ./energytop-installer-android-arm64-<commit>.sh --prefix "$PREFIX"
+```
+
+2) non-root에서 쓰기 가능한 경로로 설정 파일 작성  
+(`zmq_endpoint` IPC 소켓 경로, `csv_output_path` 로그 경로를 홈 하위로 변경)
+
+```bash
+CONFIG_DIR="$HOME/.config/energytop"
+RUN_DIR="$HOME/.local/state/energytop"
+LOG_DIR="$HOME/.local/share/energytop"
+
+mkdir -p "$CONFIG_DIR" "$RUN_DIR" "$LOG_DIR"
+
+cat > "$CONFIG_DIR/energytop.ini" <<EOF
+[Daemon]
+daemon_polling_interval_ms = 100
+zmq_publish_interval_sec = 5
+zmq_endpoint = ipc://${RUN_DIR}/energytop.ipc
+
+[Hardware]
+sysfs_path_override =
+invert_current_sign = false
+
+[Storage]
+csv_output_path = ${LOG_DIR}/energytop_log.csv
+csv_max_size_mb = 50
+EOF
+```
+
+3) 실행 시 `--config`로 설정 파일 경로를 명시
+
+```bash
+"$PREFIX/bin/energytopd" --config "$CONFIG_DIR/energytop.ini"
+"$PREFIX/bin/energytop" --config "$CONFIG_DIR/energytop.ini"
+```
+
+4) 선택: PATH 등록
+
+```bash
+echo 'export PATH="$HOME/.local/energytop/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 2.4 설정 파일
 
 기본 설정 파일 예시는 저장소의 `energytop.ini`를 사용하면 됩니다.
 
@@ -121,6 +175,9 @@ sh ./energytop-installer-android-arm64-<commit>.sh
 1. CLI 인자 `--config PATH`
 2. `/etc/energytop.ini`
 3. `/data/local/tmp/energytop.ini`
+
+Android non-root 환경에서는 2, 3번 경로를 사용할 수 없는 경우가 많으므로,  
+실사용 시에는 `--config`를 통한 명시적 지정(1번)을 권장합니다.
 
 주요 설정 키:
 
@@ -132,7 +189,7 @@ sh ./energytop-installer-android-arm64-<commit>.sh
 - `[Storage] csv_output_path`
 - `[Storage] csv_max_size_mb`
 
-### 2.4 실행
+### 2.5 실행
 
 데몬:
 
